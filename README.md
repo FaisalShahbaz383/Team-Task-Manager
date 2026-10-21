@@ -233,7 +233,7 @@ gcloud sql databases create team_task_manager --instance=task-db
 gcloud sql users set-password postgres --instance=task-db --password=YOUR_DB_PASSWORD
 Initialize the schema using Cloud SQL Studio or psql by running backend/src/db/database.sql.
 
-Step 2: Build & Push Docker Images to Google Artifact Registry
+### Step 2: Build & Push Docker Images to Google Artifact Registry
 Create an Artifact Registry repository:
 
 Bash
