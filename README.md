@@ -214,6 +214,7 @@ docker compose down -v
 
 ---
 
+Markdown
 ## 7. Google Cloud Platform (GCP) Production Deployment
 
 Follow these steps to deploy the application on GCP using **Cloud SQL (PostgreSQL)** and **Cloud Run**:
@@ -221,59 +222,52 @@ Follow these steps to deploy the application on GCP using **Cloud SQL (PostgreSQ
 ### Step 1: Set Up Cloud SQL for PostgreSQL
 1. Create a Cloud SQL PostgreSQL instance:
    ```bash
-   gcloud sql instances create task-manager-db \
+   gcloud sql instances create task-db \
        --database-version=POSTGRES_16 \
-       --cpu=1 \
-       --memory=3840MB \
+       --tier=db-f1-micro \
        --region=us-central1
-   ```
-2. Create the application database and user:
-   ```bash
-   gcloud sql databases create team_task_manager --instance=task-manager-db
-   gcloud sql users set-password postgres --instance=task-manager-db --password=STRONG_DB_PASSWORD
-   ```
-3. Initialize the schema using `gcloud sql import sql` or via Cloud SQL Studio running `backend/database.sql`.
+Create the application database and user:
 
-### Step 2: Build & Push Docker Images to Google Artifact Registry
-1. Create an Artifact Registry repository:
-   ```bash
-   gcloud artifacts repositories create task-manager-repo \
-       --repository-format=docker \
-       --location=us-central1
-   ```
-2. Build and push backend image:
-   ```bash
-   docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/backend:latest ./backend
-   docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/backend:latest
-   ```
-3. Build and push frontend image:
-   ```bash
-   docker build -t us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/frontend:latest ./frontend
-   docker push us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/frontend:latest
-   ```
+Bash
+gcloud sql databases create team_task_manager --instance=task-db
+gcloud sql users set-password postgres --instance=task-db --password=YOUR_DB_PASSWORD
+Initialize the schema using Cloud SQL Studio or psql by running backend/src/db/database.sql.
 
-### Step 3: Deploy Backend to Cloud Run
-Connect to Cloud SQL via Unix socket `/cloudsql/INSTANCE_CONNECTION_NAME`:
+Step 2: Build & Push Docker Images to Google Artifact Registry
+Create an Artifact Registry repository:
 
-```bash
+Bash
+gcloud artifacts repositories create task-manager-repo \
+    --repository-format=docker \
+    --location=us-central1
+Build and push backend image:
+
+Bash
+gcloud builds submit ./backend --tag us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/backend:latest
+Build and push frontend image:
+
+Bash
+gcloud builds submit ./frontend --tag us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/frontend:latest
+Step 3: Deploy Backend to Cloud Run
+Connect to Cloud SQL via Unix socket /cloudsql/INSTANCE_CONNECTION_NAME:
+
+Bash
 gcloud run deploy task-manager-backend \
     --image=us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/backend:latest \
     --region=us-central1 \
     --platform=managed \
     --allow-unauthenticated \
-    --add-cloudsql-instances=YOUR_PROJECT_ID:us-central1:task-manager-db \
-    --set-env-vars=NODE_ENV=production,PORT=5000,CLIENT_URL=https://task-manager-frontend-URL,DATABASE_URL="postgres://postgres:STRONG_DB_PASSWORD@localhost:5432/team_task_manager?host=/cloudsql/YOUR_PROJECT_ID:us-central1:task-manager-db",SESSION_SECRET="STRONG_RANDOM_SECRET_KEY"
-```
+    --add-cloudsql-instances=YOUR_PROJECT_ID:us-central1:task-db \
+    --set-env-vars=NODE_ENV=production,PORT=8080,CLIENT_URL=https://YOUR_FRONTEND_URL,DB_USER=postgres,DB_PASSWORD=YOUR_DB_PASSWORD,DB_NAME=team_task_manager,DB_HOST=/cloudsql/YOUR_PROJECT_ID:us-central1:task-db,SESSION_SECRET="YOUR_SESSION_SECRET"
+Step 4: Deploy Frontend to Cloud Run
+Deploy the Nginx container image targeting port 8080:
 
-### Step 4: Deploy Frontend to Cloud Run
-Deploy the Nginx container image to Cloud Run:
-
-```bash
+Bash
 gcloud run deploy task-manager-frontend \
     --image=us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/frontend:latest \
     --region=us-central1 \
     --platform=managed \
     --allow-unauthenticated \
-    --port=80
-```
-Update the backend's `CLIENT_URL` environment variable with the frontend's deployed URL to ensure CORS and secure session cookies align properly.
+    --port=8080
+    
+Update the backend's CLIENT_URL environment variable with the generated frontend Cloud Run URL to ensure CORS and session cookies align properly.
