@@ -226,31 +226,31 @@ Follow these steps to deploy the application on GCP using **Cloud SQL (PostgreSQ
        --database-version=POSTGRES_16 \
        --tier=db-f1-micro \
        --region=us-central1
-Create the application database and user:
-
+   
+1. Create the application database and user:
 Bash
 gcloud sql databases create team_task_manager --instance=task-db
 gcloud sql users set-password postgres --instance=task-db --password=YOUR_DB_PASSWORD
-Initialize the schema using Cloud SQL Studio or psql by running backend/src/db/database.sql.
+
+3. Initialize the schema using Cloud SQL Studio or psql by running backend/src/db/database.sql.
 
 ### Step 2: Build & Push Docker Images to Google Artifact Registry
-Create an Artifact Registry repository:
-
+1. Create an Artifact Registry repository:
 Bash
 gcloud artifacts repositories create task-manager-repo \
     --repository-format=docker \
     --location=us-central1
-Build and push backend image:
-
+   
+2. Build and push backend image:
 Bash
 gcloud builds submit ./backend --tag us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/backend:latest
-Build and push frontend image:
 
+4. Build and push frontend image:
 Bash
 gcloud builds submit ./frontend --tag us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/frontend:latest
-Step 3: Deploy Backend to Cloud Run
-Connect to Cloud SQL via Unix socket /cloudsql/INSTANCE_CONNECTION_NAME:
 
+### Step 3: Deploy Backend to Cloud Run
+Connect to Cloud SQL via Unix socket /cloudsql/INSTANCE_CONNECTION_NAME:
 Bash
 gcloud run deploy task-manager-backend \
     --image=us-central1-docker.pkg.dev/YOUR_PROJECT_ID/task-manager-repo/backend:latest \
@@ -259,7 +259,8 @@ gcloud run deploy task-manager-backend \
     --allow-unauthenticated \
     --add-cloudsql-instances=YOUR_PROJECT_ID:us-central1:task-db \
     --set-env-vars=NODE_ENV=production,PORT=8080,CLIENT_URL=https://YOUR_FRONTEND_URL,DB_USER=postgres,DB_PASSWORD=YOUR_DB_PASSWORD,DB_NAME=team_task_manager,DB_HOST=/cloudsql/YOUR_PROJECT_ID:us-central1:task-db,SESSION_SECRET="YOUR_SESSION_SECRET"
-Step 4: Deploy Frontend to Cloud Run
+    
+### Step 4: Deploy Frontend to Cloud Run
 Deploy the Nginx container image targeting port 8080:
 
 Bash
